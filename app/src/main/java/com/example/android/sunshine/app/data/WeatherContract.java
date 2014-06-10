@@ -15,6 +15,7 @@
  */
 package com.example.android.sunshine.app.data;
 
+import android.content.ContentUris;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
@@ -108,5 +109,36 @@ public class WeatherContract {
 
         // Degrees are meteorological degrees (e.g, 0 is north, 180 is south).  Stored as floats.
         public static final String COLUMN_DEGREES = "degrees";
+
+
+        public static Uri buildWeatherUri(long id) {
+            return ContentUris.withAppendedId(CONTENT_URI, id);
+        }
+
+        public static Uri buildWeatherLocation(String locationSetting) {
+            return CONTENT_URI.buildUpon().appendPath(locationSetting).build();
+        }
+
+        public static Uri buildWeatherLocationWithStartDate(
+                String locationSetting, String startDate) {
+            return CONTENT_URI.buildUpon().appendPath(locationSetting)
+                    .appendQueryParameter(COLUMN_DATETEXT, startDate).build();
+        }
+
+        public static Uri buildWeatherLocationWithDate(String locationSetting, String date) {
+            return CONTENT_URI.buildUpon().appendPath(locationSetting).appendPath(date).build();
+        }
+
+        public static String getLocationSettingFromUri(Uri uri) {
+            return uri.getPathSegments().get(1);
+        }
+
+        public static String getDateFromUri(Uri uri) {
+            return uri.getPathSegments().get(2);
+        }
+
+        public static String getStartDateFromUri(Uri uri) {
+            return uri.getQueryParameter(COLUMN_DATETEXT);
+        }
     }
 }
