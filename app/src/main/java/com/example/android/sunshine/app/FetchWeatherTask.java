@@ -258,6 +258,13 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
             String day = getReadableDateString(dateTime);
             resultStrs[i] = day + " - " + description + " - " + highAndLow;
         }
+        if (cVVector.size() > 0) {
+            ContentValues[] cvArray = new ContentValues[cVVector.size()];
+            cVVector.toArray(cvArray);
+            int rowsInserted = mContext.getContentResolver()
+                    .bulkInsert(WeatherEntry.CONTENT_URI, cvArray);
+            Log.v(LOG_TAG, "inserted " + rowsInserted + " rows of weather data");
+        }
         return resultStrs;
     }
 
