@@ -2,6 +2,8 @@ package com.example.android.sunshine.app.sync;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
@@ -9,13 +11,19 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SyncRequest;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
+import com.example.android.sunshine.app.MainActivity;
 import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
@@ -37,6 +45,8 @@ import java.util.Date;
 import java.util.Vector;
 
 public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
+    private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
+    private static final int WEATHER_NOTIFICATION_ID = 3004;
     public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
 
     // Interval at which to sync with the weather, in milliseconds.
@@ -229,7 +239,8 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 ContentValues weatherValues = new ContentValues();
 
                 weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationId);
-                weatherValues.put(WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime * 1000L)));
+                weatherValues.put(WeatherEntry.COLUMN_DATETEXT,
+                        WeatherContract.getDbDateString(new Date(dateTime * 1000L)));
                 weatherValues.put(WeatherEntry.COLUMN_HUMIDITY, humidity);
                 weatherValues.put(WeatherEntry.COLUMN_PRESSURE, pressure);
                 weatherValues.put(WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
@@ -240,6 +251,14 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
                 weatherValues.put(WeatherEntry.COLUMN_WEATHER_ID, weatherId);
 
                 cVVector.add(weatherValues);
+
+                // The first weather item is going to be for today.  Use weather data to populate a
+                // notification to the user, so they know what kind of world they're walking into
+                // when they walk out the front door.
+                if (i == 0) {
+                    notifyWeather(high, low, description, weatherId);
+                }
+
             }
             if ( cVVector.size() > 0 ) {
                 ContentValues[] cvArray = new ContentValues[cVVector.size()];
@@ -252,9 +271,59 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
-
-        // This will only happen if there was an error getting or parsing the forecast.
         return;
+    }
+
+    private void notifyWeather(double high, double low, String description, int weatherId) {
+        //checking the last update and notify if it' the first of the day
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String lastNotificationKey = mContext.getString(R.string.pref_last_notification);
+        long lastSync = prefs.getLong(lastNotificationKey, 0);
+
+        if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS) {
+            // Last sync was more than 1 day ago, let's send a notification with the weather.
+
+            int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
+            String title = mContext.getString(R.string.app_name);
+
+            boolean isMetric = Utility.isMetric(mContext);
+
+            // Define the text of the forecast.
+            String contentText = String.format(mContext.getString(R.string.format_notification),
+                    description,
+                    Utility.formatTemperature(mContext, high, isMetric),
+                    Utility.formatTemperature(mContext, low, isMetric));
+
+            // NotificationCompatBuilder is a very convenient way to build backward-compatible
+            // notifications.  Just throw in some data.
+            NotificationCompat.Builder mBuilder =
+                    new NotificationCompat.Builder(mContext)
+                            .setSmallIcon(iconId)
+                            .setContentTitle(title)
+                            .setContentText(contentText);
+
+            // Make something interesting happen when the user clicks on the notification.
+            // In this case, opening the app is sufficient.
+            Intent resultIntent = new Intent(mContext, MainActivity.class);
+            TaskStackBuilder stackBuilder = TaskStackBuilder.create(mContext);
+            stackBuilder.addParentStack(MainActivity.class);
+            stackBuilder.addNextIntent(resultIntent);
+            PendingIntent resultPendingIntent =
+                    stackBuilder.getPendingIntent(
+                            0,
+                            PendingIntent.FLAG_UPDATE_CURRENT
+                    );
+            mBuilder.setContentIntent(resultPendingIntent);
+            NotificationManager mNotificationManager =
+                    (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            // mId allows you to update the notification later on.
+            mNotificationManager.notify(WEATHER_NOTIFICATION_ID, mBuilder.build());
+
+            //refreshing last sync
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putLong(lastNotificationKey, System.currentTimeMillis());
+            editor.commit();
+        }
     }
 
     /**
