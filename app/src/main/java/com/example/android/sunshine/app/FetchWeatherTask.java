@@ -96,20 +96,52 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
      * Fortunately parsing is easy:  constructor takes the JSON string and converts it
      * into an Object hierarchy for us.
      */
-    private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays)
+    private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays,
+                                            String locationSetting)
             throws JSONException {
 
         // These are the names of the JSON objects that need to be extracted.
+
+        // Location information
+        final String OWM_CITY = "city";
+        final String OWM_CITY_NAME = "name";
+        final String OWM_COORD = "coord";
+        final String OWM_COORD_LAT = "lat";
+        final String OWM_COORD_LONG = "lon";
+
+        // Weather information.  Each day's forecast info is an element of the "list" array.
         final String OWM_LIST = "list";
-        final String OWM_WEATHER = "weather";
+
+        final String OWM_DATETIME = "dt";
+        final String OWM_PRESSURE = "pressure";
+        final String OWM_HUMIDITY = "humidity";
+        final String OWM_WINDSPEED = "speed";
+        final String OWM_WIND_DIRECTION = "deg";
+
+        // All temperatures are children of the "temp" object.
         final String OWM_TEMPERATURE = "temp";
         final String OWM_MAX = "max";
         final String OWM_MIN = "min";
-        final String OWM_DATETIME = "dt";
+
+        final String OWM_WEATHER = "weather";
         final String OWM_DESCRIPTION = "main";
+        final String OWM_WEATHER_ID = "id";
 
         JSONObject forecastJson = new JSONObject(forecastJsonStr);
         JSONArray weatherArray = forecastJson.getJSONArray(OWM_LIST);
+
+        JSONObject cityJson = forecastJson.getJSONObject(OWM_CITY);
+        String cityName = cityJson.getString(OWM_CITY_NAME);
+        JSONObject coordJSON = cityJson.getJSONObject(OWM_COORD);
+        double cityLatitude = coordJSON.getLong(OWM_COORD_LAT);
+        double cityLongitude = coordJSON.getLong(OWM_COORD_LONG);
+
+        Log.v(LOG_TAG, cityName + ", with coord: " + cityLatitude + " " + cityLongitude);
+
+        // Insert the location into the database.
+        // The function referenced here is not yet implemented, so we've commented it out for now.
+//        long locationID = insertLocationInDatabase(
+//                locationSetting, cityName, cityLatitude, cityLongitude);
 
         String[] resultStrs = new String[numDays];
         for(int i = 0; i < weatherArray.length(); i++) {
@@ -141,8 +173,8 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
             resultStrs[i] = day + " - " + description + " - " + highAndLow;
         }
         return resultStrs;
-
     }
+
     @Override
     protected String[] doInBackground(String... params) {
 
@@ -150,6 +182,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
         if (params.length == 0) {
             return null;
         }
+        String locationQuery = params[0];
 
         // These two need to be declared outside the try/catch
         // so that they can be closed in the finally block.
@@ -161,7 +194,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
         String format = "json";
         String units = "metric";
-        int numDays = 7;
+        int numDays = 14;
 
         try {
             // Construct the URL for the OpenWeatherMap query
@@ -229,12 +262,11 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
         }
 
         try {
-            return getWeatherDataFromJson(forecastJsonStr, numDays);
+            return getWeatherDataFromJson(forecastJsonStr, numDays, locationQuery);
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
-
         // This will only happen if there was an error getting or parsing the forecast.
         return null;
     }
