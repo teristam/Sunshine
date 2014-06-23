@@ -22,6 +22,7 @@
         <activity
             android:name="com.example.android.sunshine.app.DetailActivity"
             android:label="@string/title_activity_detail"
+            android:fontFamily="sans-serif-condensed"
             android:parentActivityName="com.example.android.sunshine.app.MainActivity" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
@@ -30,6 +31,7 @@
         <activity
             android:name="com.example.android.sunshine.app.SettingsActivity"
             android:label="@string/title_activity_settings"
+            android:fontFamily="sans-serif-condensed"
             android:parentActivityName="com.example.android.sunshine.app.MainActivity" >
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
