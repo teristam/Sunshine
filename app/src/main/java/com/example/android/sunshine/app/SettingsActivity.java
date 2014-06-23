@@ -22,6 +22,7 @@ import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 
 import com.example.android.sunshine.app.data.WeatherContract;
+import com.example.android.sunshine.app.sync.SunshineSyncAdapter;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings.
@@ -75,14 +76,11 @@ public class SettingsActivity extends PreferenceActivity
     public boolean onPreferenceChange(Preference preference, Object value) {
         String stringValue = value.toString();
 
-        // are we starting the preference activity?
-        if ( !mBindingPreference ) {
-            if (preference.getKey().equals(getString(R.string.pref_location_key))) {
-                FetchWeatherTask weatherTask = new FetchWeatherTask(this);
-                String location = value.toString();
-                weatherTask.execute(location);
+        if (!mBindingPreference) {
+            if ( preference.getKey().equals(getString(R.string.pref_location_key))) {
+                SunshineSyncAdapter.syncImmediately(this);
             } else {
-                // notify code that weather may be impacted
+                // notify code that weather may be effected
                 getContentResolver().notifyChange(WeatherContract.WeatherEntry.CONTENT_URI, null);
             }
         }
