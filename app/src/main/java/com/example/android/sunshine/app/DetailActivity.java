@@ -42,6 +42,7 @@ import com.example.android.sunshine.app.data.WeatherContract.WeatherEntry;
 public class DetailActivity extends ActionBarActivity {
 
     public static final String DATE_KEY = "forecast_date";
+    private static final String LOCATION_KEY = "location";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +87,7 @@ public class DetailActivity extends ActionBarActivity {
         public static final String DATE_KEY = "forecast_date";
 
         private String mForecastStr;
+        private String mLocation;
 
         private static final int DETAIL_LOADER = 0;
 
@@ -99,6 +101,21 @@ public class DetailActivity extends ActionBarActivity {
 
         public DetailFragment() {
             setHasOptionsMenu(true);
+        }
+
+        @Override
+        public void onSaveInstanceState(Bundle outState) {
+            outState.putString(LOCATION_KEY, mLocation);
+            super.onSaveInstanceState(outState);
+        }
+
+        @Override
+        public void onResume() {
+            super.onResume();
+            if (mLocation != null &&
+                    !mLocation.equals(Utility.getPreferredLocation(getActivity()))) {
+                getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
+            }
         }
 
         @Override
@@ -140,6 +157,9 @@ public class DetailActivity extends ActionBarActivity {
         @Override
         public void onActivityCreated(Bundle savedInstanceState) {
             getLoaderManager().initLoader(DETAIL_LOADER, null, this);
+            if (savedInstanceState != null) {
+                mLocation = savedInstanceState.getString(LOCATION_KEY);
+            }
             super.onActivityCreated(savedInstanceState);
         }
 
@@ -155,8 +175,9 @@ public class DetailActivity extends ActionBarActivity {
             // Sort order:  Ascending, by date.
             String sortOrder = WeatherContract.WeatherEntry.COLUMN_DATETEXT + " ASC";
 
+            mLocation = Utility.getPreferredLocation(getActivity());
             Uri weatherForLocationUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
-                    Utility.getPreferredLocation(getActivity()), forecastDate);
+                    mLocation, forecastDate);
             Log.v(LOG_TAG, weatherForLocationUri.toString());
 
             // Now create and return a CursorLoader that will take care of
@@ -206,11 +227,6 @@ public class DetailActivity extends ActionBarActivity {
         @Override
         public void onLoaderReset(Loader<Cursor> loader) {
             getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
-        }
-
-        @Override
-        public void onSaveInstanceState(Bundle outState) {
-            super.onSaveInstanceState(outState);
         }
     }
 }
