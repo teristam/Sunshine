@@ -156,10 +156,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
         if (savedInstanceState != null) {
             mLocation = savedInstanceState.getString(LOCATION_KEY);
         }
-        Intent intent = getActivity().getIntent();
-        if (intent != null && intent.hasExtra(DetailActivity.DATE_KEY)) {
-            getLoaderManager().initLoader(DETAIL_LOADER, null, this);
-        }
+        getLoaderManager().initLoader(DETAIL_LOADER, null, this);
     }
 
     @Override
