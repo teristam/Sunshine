@@ -1,5 +1,9 @@
 package com.example.android.sunshine.app;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,12 +30,19 @@ public class WeatherDataParser {
     /**
      * Prepare the weather high/lows for presentation.
      */
-    private static String formatHighLows(double high, double low) {
+    private static String formatHighLows(double high, double low, Context ctx) {
         // For presentation, assume the user doesn't care about tenths of a degree.
-        long roundedHigh = Math.round(high);
-        long roundedLow = Math.round(low);
+        high = high- 273.15; //convert from Kelvin
+        low = low- 273.15;
 
-        String highLowStr = roundedHigh + "/" + roundedLow;
+        //Check to see if need to convert to imperial units
+        SharedPreferences sharedPref= PreferenceManager.getDefaultSharedPreferences(ctx);
+        if(sharedPref.getString(ctx.getString(R.string.unit_key),ctx.getString(R.string.unit_metric)).equals("imperial")){
+            high=high*5/9+32;
+            low=high*5/9+32;
+        }
+
+        String highLowStr = Math.round(high) + "/" + Math.round(low);
         return highLowStr;
     }
 
@@ -42,7 +53,7 @@ public class WeatherDataParser {
      * Fortunately parsing is easy:  constructor takes the JSON string and converts it
      * into an Object hierarchy for us.
      */
-    public static String[] getWeatherDataFromJson(String forecastJsonStr, int numDays)
+    public static String[] getWeatherDataFromJson(String forecastJsonStr, int numDays, Context ctx)
             throws JSONException {
 
         // These are the names of the JSON objects that need to be extracted.
@@ -53,8 +64,10 @@ public class WeatherDataParser {
         final String OWM_MIN = "min";
         final String OWM_DATETIME = "dt";
         final String OWM_DESCRIPTION = "main";
+        final String OWM_CITY="city";
 
         JSONObject forecastJson = new JSONObject(forecastJsonStr);
+        JSONObject cityJson=forecastJson.getJSONObject(OWM_CITY);
         JSONArray weatherArray = forecastJson.getJSONArray(OWM_LIST);
 
         String[] resultStrs = new String[numDays];
@@ -83,8 +96,10 @@ public class WeatherDataParser {
             double high = temperatureObject.getDouble(OWM_MAX);
             double low = temperatureObject.getDouble(OWM_MIN);
 
-            highAndLow = formatHighLows(high, low);
-            resultStrs[i] = day + " - " + description + " - " + highAndLow;
+
+
+            highAndLow = formatHighLows(high, low, ctx);
+            resultStrs[i] = day + " - " + description + " - " + highAndLow+" - "+cityJson.getString("name");
         }
 
         return resultStrs;

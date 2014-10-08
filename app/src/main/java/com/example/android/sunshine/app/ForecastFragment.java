@@ -1,8 +1,11 @@
 package com.example.android.sunshine.app;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -11,8 +14,10 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONException;
 
@@ -41,9 +46,9 @@ public class ForecastFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
         ArrayList<String> listItem=new ArrayList<String>();
-        listItem.add("Today-Sunny-28/29");
-        listItem.add("Tomorrow-Raining-31/33");
-        listItem.add("Day after Tomorrow -Cloudy-23/24");
+//        listItem.add("Today-Sunny-28/29");
+//        listItem.add("Tomorrow-Raining-31/33");
+//        listItem.add("Day after Tomorrow -Cloudy-23/24");
 
         //Create adaptor
         adapter=new ArrayAdapter<String>(getActivity(),
@@ -51,6 +56,16 @@ public class ForecastFragment extends Fragment {
 
         mListView=(ListView)rootView.findViewById(R.id.listview_forecast);
         mListView.setAdapter(adapter);
+
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                Toast.makeText(getActivity(), adapter.getItem(position),Toast.LENGTH_SHORT).show();
+                Intent intent=new Intent(getActivity(),DetailsActivity.class);
+                intent.putExtra(Intent.EXTRA_TEXT,adapter.getItem(position));
+                startActivity(intent);
+            }
+        });
 
 
         this.setHasOptionsMenu(true);
@@ -136,7 +151,7 @@ public class ForecastFragment extends Fragment {
             String[] forecast=null;
 
             try{
-                forecast=WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,7);
+                forecast=WeatherDataParser.getWeatherDataFromJson(forecastJsonStr,7,getActivity());
 
             }catch (JSONException e){
                 e.printStackTrace();
@@ -157,6 +172,12 @@ public class ForecastFragment extends Fragment {
             }
         }
     }
+    @Override
+    public void onStart(){
+        super.onStart();
+
+        updateWeather();
+    }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
@@ -168,12 +189,21 @@ public class ForecastFragment extends Fragment {
 
         if(item.getItemId()==R.id.refresh_menu){
 
-            FetchWeatherTask task=new FetchWeatherTask();
-            task.execute("94035");
+            updateWeather();
 
             return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void updateWeather(){
+        FetchWeatherTask task=new FetchWeatherTask();
+
+        //load location setting from preference
+        SharedPreferences sharedPref=PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String locationCode=sharedPref.getString(getString(R.string.locationSetting_key),getString(R.string.locationSettingDefault));
+        task.execute(locationCode);
+
     }
 }
